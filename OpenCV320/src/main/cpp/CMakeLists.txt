@@ -6,4 +6,6 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 add_library(native-lib SHARED native-lib.cpp)
-target_link_libraries(native-lib ${OpenCV_LIBS})
+target_link_libraries(native-lib ${OpenCV_LIBS} -ljnigraphics)
+
+

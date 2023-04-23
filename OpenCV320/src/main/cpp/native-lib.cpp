@@ -1,8 +1,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
 #include <android/log.h>
+#include <android/bitmap.h>
 #include <jni.h>
 
 using namespace cv;
@@ -10,33 +10,35 @@ using namespace std;
 
 extern "C" {
 
-JNIEXPORT void JNICALL
-Java_com_bethena_opencv320_NativeLib_convertToGray(JNIEnv *env, jobject instance,
-                                                    jstring inputImagePath, jstring outputImagePath) {
+JNIEXPORT jobject JNICALL
+Java_com_bethena_opencv320_NativeLib_convertToGray(JNIEnv *env, jobject instance, jobject bitmap) {
 
-    const char *inputImagePathCStr = env->GetStringUTFChars(inputImagePath, 0);
-    const char *outputImagePathCStr = env->GetStringUTFChars(outputImagePath, 0);
+    // Convert the input Bitmap to OpenCV Mat
+    AndroidBitmapInfo input_info;
+    void *input_pixels;
+    AndroidBitmap_getInfo(env, bitmap, &input_info);
+    AndroidBitmap_lockPixels(env, bitmap, &input_pixels);
 
-    Mat src, gray;
+    cv::Mat input_image(input_info.height, input_info.width, CV_8UC4, input_pixels);
+    cv::cvtColor(input_image, input_image, cv::COLOR_BGRA2BGR);
 
-    // Read the image
-    src = imread(inputImagePathCStr, IMREAD_COLOR);
+    // Convert the input image to grayscale
+    cv::Mat gray_image;
+    cv::cvtColor(input_image, gray_image, cv::COLOR_BGR2GRAY);
 
-    // Check if the image was loaded successfully
-    if (src.empty()) {
-        __android_log_print(ANDROID_LOG_ERROR, "OpenCV", "Cannot read image %s", inputImagePathCStr);
-        return;
-    }
+    // Convert the grayscale image back to BGRA format
+    cv::cvtColor(gray_image, gray_image, cv::COLOR_GRAY2BGRA);
 
-    // Convert the image to grayscale
-    cvtColor(src, gray, COLOR_BGR2GRAY);
+    // Create an empty Bitmap for the output image
+    jobject output_bitmap = env->NewGlobalRef(bitmap);
 
-    // Save the grayscale image
-    imwrite(outputImagePathCStr, gray);
+    // Set the output Bitmap's pixels to the grayscale image
+    AndroidBitmap_unlockPixels(env, bitmap);
+    AndroidBitmap_lockPixels(env, output_bitmap, &input_pixels);
+    memcpy(input_pixels, gray_image.data, gray_image.total() * gray_image.elemSize());
+    AndroidBitmap_unlockPixels(env, output_bitmap);
 
-    // Release resources
-    env->ReleaseStringUTFChars(inputImagePath, inputImagePathCStr);
-    env->ReleaseStringUTFChars(outputImagePath, outputImagePathCStr);
+    return output_bitmap;
 }
 
 } // extern "C"
