@@ -13,7 +13,7 @@ class NativeLib {
     companion object {
         // Used to load the 'opencv320' library on application startup.
         init {
-            System.loadLibrary("native-lib")
+            System.loadLibrary("opencv-mini-3.2.0")
         }
     }
 }
